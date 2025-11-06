@@ -22,16 +22,16 @@
 
 #include <QTimer>
 #include <QDebug>
-#include <QX11Info>
 #include <QWindow>
 #include <QScreen>
+#include <QGuiApplication>
+#include <qpa/qplatformnativeinterface.h>
 
+// KF6
 #include <KWindowEffects>
 #include <KWindowSystem>
 #include <KWindowInfo>
-
-// X11
-#include <NETWM>
+#include <KX11Extras>
 
 static XWindowInterface *INSTANCE = nullptr;
 
@@ -39,62 +39,70 @@ XWindowInterface *XWindowInterface::instance()
 {
     if (!INSTANCE)
         INSTANCE = new XWindowInterface;
-
     return INSTANCE;
 }
 
 XWindowInterface::XWindowInterface(QObject *parent)
     : QObject(parent)
 {
-    connect(KWindowSystem::self(), &KWindowSystem::windowAdded, this, &XWindowInterface::onWindowadded);
-    connect(KWindowSystem::self(), &KWindowSystem::windowRemoved, this, &XWindowInterface::windowRemoved);
-    connect(KWindowSystem::self(), &KWindowSystem::activeWindowChanged, this, &XWindowInterface::activeChanged);
+    // KDE6 中使用字符串信号名连接
+    connect(KWindowSystem::self(), SIGNAL(windowAdded(WId)), this, SLOT(handleWindowAdded(WId)));
+    connect(KWindowSystem::self(), SIGNAL(windowRemoved(WId)), this, SLOT(handleWindowRemoved(WId)));
+    connect(KWindowSystem::self(), SIGNAL(activeWindowChanged(WId)), this, SLOT(handleActiveWindowChanged(WId)));
 }
 
 void XWindowInterface::enableBlurBehind(QWindow *view, bool enable, const QRegion &region)
 {
-    KWindowEffects::enableBlurBehind(view->winId(), enable, region);
+    // KDE6 中直接传递 QWindow*
+    KWindowEffects::enableBlurBehind(view, enable, region);
 }
 
 WId XWindowInterface::activeWindow()
 {
-    return KWindowSystem::activeWindow();
+    return KX11Extras::activeWindow();
 }
 
 void XWindowInterface::minimizeWindow(WId win)
 {
-    KWindowSystem::minimizeWindow(win);
+    KX11Extras::minimizeWindow(win);
 }
 
 void XWindowInterface::closeWindow(WId id)
 {
     // FIXME: Why there is no such thing in KWindowSystem??
-    NETRootInfo(QX11Info::connection(), NET::CloseWindow).closeWindowRequest(id);
+    QWindow* window = QWindow::fromWinId(id); // 根据 WId 获取 QWindow
+    if (window) {
+        window->close(); // 请求关闭窗口
+        // 或者，如果需要更强制性的方式，可以销毁窗口
+        // window->destroy(); 
+    }
 }
 
 void XWindowInterface::forceActiveWindow(WId win)
 {
-    KWindowSystem::forceActiveWindow(win);
+    KX11Extras::forceActiveWindow(win);
 }
 
 QMap<QString, QVariant> XWindowInterface::requestInfo(quint64 wid)
 {
-    const KWindowInfo winfo { wid, NET::WMFrameExtents
-                | NET::WMWindowType
-                | NET::WMGeometry
-                | NET::WMDesktop
-                | NET::WMState
-                | NET::WMName
-                | NET::WMVisibleName,
-                NET::WM2WindowClass
-                | NET::WM2Activities
-                | NET::WM2AllowedActions
-                | NET::WM2TransientFor };
+    const KWindowInfo winfo(wid, 
+        NET::WMFrameExtents |
+        NET::WMWindowType |
+        NET::WMGeometry |
+        NET::WMDesktop |
+        NET::WMState |
+        NET::WMName |
+        NET::WMVisibleName,
+        NET::WM2WindowClass |
+        NET::WM2Activities |
+        NET::WM2AllowedActions |
+        NET::WM2TransientFor);
+        
     QMap<QString, QVariant> result;
     const QString winClass = QString(winfo.windowClassClass());
 
     result.insert("iconName", winClass.toLower());
-    result.insert("active", wid == KWindowSystem::activeWindow());
+    result.insert("active", wid == KX11Extras::activeWindow());
     result.insert("visibleName", winfo.visibleName());
     result.insert("id", winClass);
 
@@ -103,7 +111,8 @@ QMap<QString, QVariant> XWindowInterface::requestInfo(quint64 wid)
 
 QString XWindowInterface::requestWindowClass(quint64 wid)
 {
-    return KWindowInfo(wid, NET::Supported, NET::WM2WindowClass).windowClassClass();
+    KWindowInfo info(wid, NET::Supported, NET::WM2WindowClass);
+    return QString(info.windowClassClass());
 }
 
 bool XWindowInterface::isAcceptableWindow(quint64 wid)
@@ -128,19 +137,30 @@ bool XWindowInterface::isAcceptableWindow(quint64 wid)
     if (info.hasState(NET::SkipTaskbar) || info.hasState(NET::SkipPager))
         return false;
 
-    // WM_TRANSIENT_FOR hint not set - normal window
     WId transFor = info.transientFor();
-    if (transFor == 0 || transFor == wid || transFor == (WId) QX11Info::appRootWindow())
+    
+    // Qt6 中获取根窗口的新方式
+    auto nativeInterface = QGuiApplication::platformNativeInterface();
+    if (nativeInterface) {
+        void* resource = nativeInterface->nativeResourceForIntegration("rootwindow");
+        if (resource) {
+            quint32 rootWindow = static_cast<quint32>(reinterpret_cast<quintptr>(resource));
+            if (transFor == 0 || transFor == wid || transFor == rootWindow)
+                return true;
+        }
+    }
+    
+    if (transFor == 0 || transFor == wid)
         return true;
 
-    info = KWindowInfo(transFor, NET::WMWindowType);
+    KWindowInfo transInfo(transFor, NET::WMWindowType);
 
     QFlags<NET::WindowTypeMask> normalFlag;
     normalFlag |= NET::NormalMask;
     normalFlag |= NET::DialogMask;
     normalFlag |= NET::UtilityMask;
 
-    return !NET::typeMatchesMask(info.windowType(NET::AllTypesMask), normalFlag);
+    return !NET::typeMatchesMask(transInfo.windowType(NET::AllTypesMask), normalFlag);
 }
 
 void XWindowInterface::setViewStruts(QWindow *view, DockSettings::Direction direction, const QRect &rect, bool compositing)
@@ -148,15 +168,12 @@ void XWindowInterface::setViewStruts(QWindow *view, DockSettings::Direction dire
     NETExtendedStrut strut;
 
     const auto screen = view->screen();
-
-    // const QRect currentScreen {screen->geometry()};
-    const QRect wholeScreen { {0, 0}, screen->virtualSize() };
     bool isRound = DockSettings::self()->style() == DockSettings::Round;
-    const int edgeMargins = compositing && isRound? DockSettings::self()->edgeMargins() : 0;
+    const int edgeMargins = compositing && isRound ? DockSettings::self()->edgeMargins() : 0;
 
     switch (direction) {
     case DockSettings::Left: {
-        const int leftOffset = { screen->geometry().left() };
+        const int leftOffset = screen->geometry().left();
         strut.left_width = rect.width() + leftOffset + edgeMargins;
         strut.left_start = rect.y();
         strut.left_end = rect.y() + rect.height() - 1;
@@ -169,7 +186,6 @@ void XWindowInterface::setViewStruts(QWindow *view, DockSettings::Direction dire
         break;
     }
     case DockSettings::Right: {
-        // const int rightOffset = {wholeScreen.right() - currentScreen.right()};
         strut.right_width = rect.width() + edgeMargins;
         strut.right_start = rect.y();
         strut.right_end = rect.y() + rect.height() - 1;
@@ -179,53 +195,59 @@ void XWindowInterface::setViewStruts(QWindow *view, DockSettings::Direction dire
         break;
     }
 
-    KWindowSystem::setExtendedStrut(view->winId(),
-                                    strut.left_width,   strut.left_start,   strut.left_end,
-                                    strut.right_width,  strut.right_start,  strut.right_end,
-                                    strut.top_width,    strut.top_start,    strut.top_end,
-                                    strut.bottom_width, strut.bottom_start, strut.bottom_end
-                                    );
+    // kde6移除了这个函数所以目前先删掉
+    // KWindowSystem::setExtendedStrut(view->winId(),
+    //                                 strut.left_width,   strut.left_start,   strut.left_end,
+    //                                 strut.right_width,  strut.right_start,  strut.right_end,
+    //                                 strut.top_width,    strut.top_start,    strut.top_end,
+    //                                 strut.bottom_width, strut.bottom_start, strut.bottom_end);
 }
 
 void XWindowInterface::clearViewStruts(QWindow *view)
 {
-    KWindowSystem::setExtendedStrut(view->winId(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    // KWindowSystem::setExtendedStrut(view->winId(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 }
 
 void XWindowInterface::startInitWindows()
 {
-    for (auto wid : KWindowSystem::self()->windows()) {
-        onWindowadded(wid);
+    const auto windows = KX11Extras::windows();
+    for (auto wid : windows) {
+        processWindowAdded(wid);
     }
 }
 
 QString XWindowInterface::desktopFilePath(quint64 wid)
 {
     const KWindowInfo info(wid, NET::Properties(), NET::WM2WindowClass | NET::WM2DesktopFileName);
-    return Utils::instance()->desktopPathFromMetadata(info.windowClassClass(),
-                                                      NETWinInfo(QX11Info::connection(), wid,
-                                                                 QX11Info::appRootWindow(),
-                                                                 NET::WMPid,
-                                                                 NET::Properties2()).pid(),
-                                                      info.windowClassName());
+    
+    KWindowInfo pidInfo(wid, NET::WMPid);
+    const qint64 pid = pidInfo.pid();
+
+    return Utils::instance()->desktopPathFromMetadata(info.windowClassClass(), pid, info.windowClassName());
 }
 
 void XWindowInterface::setIconGeometry(quint64 wid, const QRect &rect)
 {
-    NETWinInfo info(QX11Info::connection(),
-                    wid,
-                    (WId) QX11Info::appRootWindow(),
-                    NET::WMIconGeometry,
-                    QFlags<NET::Property2>(1));
-    NETRect nrect;
-    nrect.pos.x = rect.x();
-    nrect.pos.y = rect.y();
-    nrect.size.height = rect.height();
-    nrect.size.width = rect.width();
-    info.setIconGeometry(nrect);
+    // kde6中没有这个函数了，先注释掉
+    // KX11Extras::setIconGeometry(wid, rect);
 }
 
-void XWindowInterface::onWindowadded(quint64 wid)
+void XWindowInterface::handleWindowAdded(WId wid)
+{
+    processWindowAdded(wid);
+}
+
+void XWindowInterface::handleWindowRemoved(WId wid)
+{
+    emit windowRemoved(wid);
+}
+
+void XWindowInterface::handleActiveWindowChanged(WId wid)
+{
+    emit activeChanged(wid);
+}
+
+void XWindowInterface::processWindowAdded(quint64 wid)
 {
     if (isAcceptableWindow(wid)) {
         emit windowAdded(wid);

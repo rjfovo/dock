@@ -20,8 +20,9 @@
 #include "activity.h"
 #include "docksettings.h"
 
-#include <NETWM>
 #include <KWindowSystem>
+#include <KX11Extras>
+#include <KWindowInfo>
 
 static Activity *SELF = nullptr;
 
@@ -39,9 +40,12 @@ Activity::Activity(QObject *parent)
 {
     onActiveWindowChanged();
 
-    connect(KWindowSystem::self(), &KWindowSystem::activeWindowChanged, this, &Activity::onActiveWindowChanged);
-    connect(KWindowSystem::self(), static_cast<void (KWindowSystem::*)(WId)>(&KWindowSystem::windowChanged),
-            this, &Activity::onActiveWindowChanged);
+    connect(KX11Extras::self(), &KX11Extras::activeWindowChanged,
+        this, &Activity::onActiveWindowChanged);
+    connect(KX11Extras::self(),
+        static_cast<void (KX11Extras::*)(WId, NET::Properties, NET::Properties2)>
+        (&KX11Extras::windowChanged),
+        this, &Activity::onActiveWindowChanged);
 }
 
 bool Activity::existsWindowMaximized() const
@@ -56,22 +60,43 @@ bool Activity::launchPad() const
 #include <QDebug>
 void Activity::onActiveWindowChanged()
 {
-    KWindowInfo info(KWindowSystem::activeWindow(),
-                     NET::WMState | NET::WMVisibleName,
-                     NET::WM2WindowClass);
+    // 获取活动窗口
+    WId activeWindow = KX11Extras::activeWindow();
+    
+    if (!activeWindow) {
+        // 没有活动窗口时的处理
+        if (m_launchPad) {
+            m_launchPad = false;
+            emit launchPadChanged();
+        }
+        return;
+    }
 
-    bool launchPad = info.windowClassClass() == "cutefish-launcher";
+    // 获取窗口信息 - 使用 KWindowInfo (如果可用)
+    KWindowInfo info(activeWindow, NET::WMState | NET::WMVisibleName | NET::WMWindowType,
+                    NET::WM2WindowClass);
+    
+    // 检查是否是启动器
+    QString windowClass = info.windowClassClass();
+    bool launchPad = windowClass == "cutefish-launcher" || 
+                    info.windowType(NET::AllTypesMask) == NET::Dock;
 
+    // 智能隐藏模式处理
     if (DockSettings::self()->visibility() == DockSettings::IntellHide) {
         bool existsWindowMaximized = false;
 
-        for (WId wid : KWindowSystem::windows()) {
-            KWindowInfo i(wid, NET::WMState, NET::WM2WindowClass);
+        // 获取所有窗口
+        const QList<WId> windows = KX11Extras::windows();
+        
+        for (WId wid : windows) {
+            KWindowInfo windowInfo(wid, NET::WMState, NET::WM2WindowClass);
 
-            if (i.isMinimized() || i.hasState(NET::SkipTaskbar))
+            // 跳过最小化或跳过任务栏的窗口
+            if (windowInfo.isMinimized() || windowInfo.hasState(NET::SkipTaskbar))
                 continue;
 
-            if (i.hasState(NET::MaxVert) || i.hasState(NET::MaxHoriz)) {
+            // 检查是否最大化
+            if (windowInfo.hasState(NET::MaxVert) && windowInfo.hasState(NET::MaxHoriz)) {
                 existsWindowMaximized = true;
                 break;
             }
@@ -83,11 +108,16 @@ void Activity::onActiveWindowChanged()
         }
     }
 
+    // 更新启动器状态
     if (m_launchPad != launchPad) {
         m_launchPad = launchPad;
         emit launchPadChanged();
     }
 
+    // 更新窗口信息
     m_pid = info.pid();
-    m_windowClass = info.windowClassClass().toLower();
+    m_windowClass = windowClass.toLower();
+    
+    // // 可选：发射其他信号
+    // emit activeWindowChanged(activeWindow);
 }

@@ -29,10 +29,11 @@
 #include <QQmlProperty>
 #include <QQuickItem>
 #include <QMetaEnum>
+#include <QWindow>
 
 #include <NETWM>
 #include <KWindowSystem>
-#include <KWindowEffects>
+#include <KX11Extras>
 
 MainWindow::MainWindow(QQuickView *parent)
     : QQuickView(parent)
@@ -53,8 +54,12 @@ MainWindow::MainWindow(QQuickView *parent)
     setColor(Qt::transparent);
 
     setFlags(Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
-    // KWindowSystem::setOnDesktop(winId(), NET::OnAllDesktops);
-    KWindowSystem::setType(winId(), NET::Dock);
+    #ifdef Q_OS_LINUX
+        if (KWindowSystem::isPlatformX11()) {
+            KX11Extras::setType(winId(), NET::Dock);
+            KX11Extras::setOnAllDesktops(winId(), true);
+        }
+    #endif
 
     engine()->rootContext()->setContextProperty("appModel", m_appModel);
     engine()->rootContext()->setContextProperty("process", new ProcessProvider);
@@ -286,7 +291,8 @@ void MainWindow::initSlideWindow()
     else if (m_settings->direction() == DockSettings::Bottom)
         location = KWindowEffects::BottomEdge;
 
-    KWindowEffects::slideWindow(winId(), location);
+    // 使用 this 指针，因为 QQuickView 就是 QWindow
+    KWindowEffects::slideWindow(this, location);
 }
 
 void MainWindow::updateViewStruts()

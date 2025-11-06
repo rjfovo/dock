@@ -24,9 +24,14 @@
 #include "docksettings.h"
 #include <QObject>
 
-// KLIB
+// KF6 库
 #include <KWindowInfo>
 #include <KWindowEffects>
+#include <KWindowSystem>
+#include <KX11Extras>
+
+// NETWM for X11 specific functions
+#include <NETWM>
 
 class XWindowInterface : public QObject
 {
@@ -61,8 +66,13 @@ signals:
     void windowRemoved(quint64 wid);
     void activeChanged(quint64 wid);
 
+private slots:
+    void handleWindowAdded(WId wid);
+    void handleWindowRemoved(WId wid);
+    void handleActiveWindowChanged(WId wid);
+
 private:
-    void onWindowadded(quint64 wid);
+    void processWindowAdded(quint64 wid);
 };
 
 #endif // XWINDOWINTERFACE_H
