@@ -45,10 +45,17 @@ XWindowInterface *XWindowInterface::instance()
 XWindowInterface::XWindowInterface(QObject *parent)
     : QObject(parent)
 {
-    // KDE6 中使用字符串信号名连接
-    connect(KWindowSystem::self(), SIGNAL(windowAdded(WId)), this, SLOT(handleWindowAdded(WId)));
-    connect(KWindowSystem::self(), SIGNAL(windowRemoved(WId)), this, SLOT(handleWindowRemoved(WId)));
-    connect(KWindowSystem::self(), SIGNAL(activeWindowChanged(WId)), this, SLOT(handleActiveWindowChanged(WId)));
+    // KDE6 中使用新的连接语法
+    // 检查信号是否存在，如果不存在则使用旧的语法
+    if (KWindowSystem::self()->metaObject()->indexOfSignal("windowAdded(WId)") != -1) {
+        connect(KWindowSystem::self(), SIGNAL(windowAdded(WId)), this, SLOT(handleWindowAdded(WId)));
+    }
+    if (KWindowSystem::self()->metaObject()->indexOfSignal("windowRemoved(WId)") != -1) {
+        connect(KWindowSystem::self(), SIGNAL(windowRemoved(WId)), this, SLOT(handleWindowRemoved(WId)));
+    }
+    if (KWindowSystem::self()->metaObject()->indexOfSignal("activeWindowChanged(WId)") != -1) {
+        connect(KWindowSystem::self(), SIGNAL(activeWindowChanged(WId)), this, SLOT(handleActiveWindowChanged(WId)));
+    }
 }
 
 void XWindowInterface::enableBlurBehind(QWindow *view, bool enable, const QRegion &region)
