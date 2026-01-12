@@ -105,14 +105,14 @@ Item {
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         drag.axis: Drag.XAndYAxis
 
-        onClicked: {
+        onClicked: (mouse) => {
             if (mouse.button === Qt.RightButton)
                 control.rightClicked(mouse)
             else
                 control.clicked(mouse)
         }
 
-        onPressed: {
+        onPressed: (mouse) => {
             control.pressed(mouse)
             popupTips.hide()
         }
@@ -132,7 +132,7 @@ Item {
             control.positionChanged()
         }
 
-        onPressAndHold : control.pressAndHold(mouse)
+        onPressAndHold: (mouse) => control.pressAndHold(mouse)
         onReleased: {
             drag.target = null
             control.released()
