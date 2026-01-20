@@ -54,7 +54,7 @@ DockItem {
     onPressed: updateGeometry()
     onRightClicked: if (model.appId !== "cutefish-launcher") contextMenu.show()
 
-    onClicked: {
+    onClicked: (mouse) => {
         if (mouse.button === Qt.LeftButton)
             appModel.clicked(model.appId)
         else if (mouse.button === Qt.MiddleButton)

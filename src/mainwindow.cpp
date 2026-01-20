@@ -20,6 +20,7 @@
 #include "mainwindow.h"
 #include "processprovider.h"
 #include "dockadaptor.h"
+#include "iconthemeimageprovider.h"
 
 #include <QGuiApplication>
 #include <QScreen>
@@ -66,6 +67,9 @@ MainWindow::MainWindow(QQuickView *parent)
     engine()->rootContext()->setContextProperty("Settings", m_settings);
     engine()->rootContext()->setContextProperty("mainWindow", this);
     engine()->rootContext()->setContextProperty("trash", m_trashManager);
+
+    // Register image provider for icon theme
+    engine()->addImageProvider(QLatin1String("icontheme"), new IconThemeImageProvider);
 
     setSource(QUrl(QStringLiteral("qrc:/qml/main.qml")));
     setScreen(qApp->primaryScreen());
