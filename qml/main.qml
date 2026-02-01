@@ -22,7 +22,7 @@ import QtQuick.Controls 6.0
 import QtQuick.Layouts 6.0
 import Qt5Compat.GraphicalEffects
 
-import Cutefish.Dock 1.0
+import cutefish.Dock 1.0
 import FishUI 1.0 as FishUI
 
 Item {

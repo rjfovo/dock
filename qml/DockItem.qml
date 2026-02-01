@@ -20,7 +20,7 @@
 import QtQuick 6.0
 import QtQuick.Controls 6.0
 import Qt5Compat.GraphicalEffects
-import Cutefish.Dock 1.0
+import cutefish.Dock 1.0
 import FishUI 1.0 as FishUI
 
 Item {
@@ -117,13 +117,13 @@ Item {
             popupTips.hide()
         }
 
-        onPositionChanged: {
+        onPositionChanged: (mouse) => {
             if (pressed) {
                 if (control.draggable && mouse.source !== Qt.MouseEventSynthesizedByQt) {
                     drag.target = icon
                     icon.grabToImage(function(result) {
                         control.Drag.imageSource = result.url
-                    }, Qt.size(icon.width, icon.height))
+                    }, { targetSize: Qt.size(icon.width, icon.height) })
                 } else {
                     drag.target = null
                 }
