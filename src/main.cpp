@@ -23,6 +23,10 @@
 #include <QTranslator>
 #include <QLocale>
 #include <QDBusConnection>
+#include <QThread>
+#include <QIcon>
+#include <QDir>
+#include <QDebug>
 
 #include "applicationmodel.h"
 #include "mainwindow.h"
@@ -31,7 +35,51 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
-    if (!QDBusConnection::sessionBus().registerService("com.cutefish.Dock")) {
+    // 设置图标主题
+    // 在Qt6中，需要确保图标主题可用
+    // 首先设置搜索路径
+    QStringList iconThemePaths;
+    iconThemePaths << "/usr/share/icons";
+    iconThemePaths << QDir::homePath() + "/.local/share/icons";
+    iconThemePaths << "/usr/local/share/icons";
+    QIcon::setThemeSearchPaths(iconThemePaths);
+    
+    // 尝试按优先级设置图标主题
+    QStringList preferredThemes = {"cutefish", "Crule", "Crule-dark", "breeze", "Adwaita", "hicolor"};
+    QString themeSet = "hicolor"; // 默认回退
+    
+    for (const QString &theme : preferredThemes) {
+        QString themePath = QString("/usr/share/icons/%1").arg(theme);
+        if (QDir(themePath).exists()) {
+            themeSet = theme;
+            break;
+        }
+    }
+    
+    QIcon::setThemeName(themeSet);
+    qDebug() << "Dock: Icon theme set to:" << QIcon::themeName() << "from search paths:" << QIcon::themeSearchPaths();
+    
+    // 确保QIcon图像提供者可用于QML
+    // 这是image://icontheme/ URL正常工作所必需的
+    if (QIcon::themeName().isEmpty()) {
+        qWarning() << "Dock: No icon theme set! image://icontheme/ URLs will not work.";
+    }
+
+    // Try multiple times to register DBus service (in case DBus is not ready yet)
+    int retryCount = 0;
+    const int maxRetries = 10;
+    bool serviceRegistered = false;
+    
+    while (retryCount < maxRetries && !serviceRegistered) {
+        serviceRegistered = QDBusConnection::sessionBus().registerService("com.cutefish.Dock");
+        if (!serviceRegistered) {
+            retryCount++;
+            QThread::msleep(100); // Wait 100ms before retrying
+        }
+    }
+    
+    if (!serviceRegistered) {
+        qWarning() << "Failed to register DBus service after" << maxRetries << "retries";
         return -1;
     }
 
@@ -50,6 +98,7 @@ int main(int argc, char *argv[])
     MainWindow w;
 
     if (!QDBusConnection::sessionBus().registerObject("/Dock", &w)) {
+        qWarning() << "Failed to register DBus object";
         return -1;
     }
 
