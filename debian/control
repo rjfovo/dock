@@ -24,6 +24,8 @@ Depends: qml6-module-qtquick-controls,
          qml6-module-qtquick-window,
          qml6-module-qtquick-shapes,
          qml6-module-qt5compat-graphicaleffects,
+         libpolkit-qt6-1-dev,
+         libpolkit-agent-1-dev,
          ${misc:Depends},
          ${shlibs:Depends}
 Description: CutefishOS Dock
