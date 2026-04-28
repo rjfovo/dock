@@ -473,7 +473,7 @@ void ApplicationModel::onWindowAdded(quint64 wid)
 
         handleDataChangedFromItem(desktopItem);
     }
-    // Find from id
+    // Find from id (case-insensitive)
     else if (contains(id)) {
         for (ApplicationItem *item : m_appItems) {
             if (item->id == id) {
@@ -484,29 +484,86 @@ void ApplicationModel::onWindowAdded(quint64 wid)
             }
         }
     }
-    // New item needs to be added.
+    // Try case-insensitive matching for pinned items
     else {
-        beginInsertRows(QModelIndex(), rowCount(), rowCount());
-        ApplicationItem *item = new ApplicationItem;
-        item->id = id;
-        item->iconName = info.value("iconName").toString();
-        item->visibleName = info.value("visibleName").toString();
-        item->isActive = info.value("active").toBool();
-        item->wids.append(wid);
+        ApplicationItem *matchedItem = nullptr;
 
-        if (!desktopPath.isEmpty()) {
-            QMap<QString, QString> desktopInfo = Utils::instance()->readInfoFromDesktop(desktopPath);
-            item->iconName = desktopInfo.value("Icon");
-            item->visibleName = desktopInfo.value("Name");
-            item->exec = desktopInfo.value("Exec");
-            item->desktopPath = desktopPath;
+        // First, try to find a matching item by case-insensitive id comparison
+        for (ApplicationItem *item : m_appItems) {
+            if (item->id.compare(id, Qt::CaseInsensitive) == 0) {
+                matchedItem = item;
+                break;
+            }
         }
 
-        m_appItems << item;
-        endInsertRows();
+        // If not found by id, try to find by desktop file basename
+        if (!matchedItem && !desktopPath.isEmpty()) {
+            QFileInfo fi(desktopPath);
+            QString desktopBaseName = fi.baseName();
+            for (ApplicationItem *item : m_appItems) {
+                if (item->id.compare(desktopBaseName, Qt::CaseInsensitive) == 0) {
+                    matchedItem = item;
+                    break;
+                }
+            }
+        }
 
-        emit itemAdded();
-        emit countChanged();
+        // If not found by desktop basename, try to find by visibleName
+        if (!matchedItem) {
+            QString visibleName = info.value("visibleName").toString();
+            for (ApplicationItem *item : m_appItems) {
+                if (item->visibleName.compare(visibleName, Qt::CaseInsensitive) == 0) {
+                    matchedItem = item;
+                    break;
+                }
+            }
+        }
+
+        if (matchedItem) {
+            // Update the id to match the window class for future lookups
+            matchedItem->id = id;
+            matchedItem->wids.append(wid);
+            matchedItem->isActive = info.value("active").toBool();
+
+            if (!desktopPath.isEmpty() && matchedItem->desktopPath.isEmpty()) {
+                QMap<QString, QString> desktopInfo = Utils::instance()->readInfoFromDesktop(desktopPath);
+                matchedItem->iconName = desktopInfo.value("Icon");
+                matchedItem->visibleName = desktopInfo.value("Name");
+                matchedItem->exec = desktopInfo.value("Exec");
+                matchedItem->desktopPath = desktopPath;
+            }
+
+            handleDataChangedFromItem(matchedItem);
+        } else {
+            // 没有找到对应的 desktop 文件，不添加到 dock 中
+            // 这类窗口通常是后台程序（如 cutefish-statusbar），不应该出现在 dock 任务栏
+            if (desktopPath.isEmpty()) {
+                return;
+            }
+
+            // New item needs to be added.
+            beginInsertRows(QModelIndex(), rowCount(), rowCount());
+            ApplicationItem *item = new ApplicationItem;
+            item->id = id;
+            item->iconName = info.value("iconName").toString();
+            item->visibleName = info.value("visibleName").toString();
+            item->isActive = info.value("active").toBool();
+            item->wids.append(wid);
+
+            if (!desktopPath.isEmpty()) {
+                QMap<QString, QString> desktopInfo = Utils::instance()->readInfoFromDesktop(desktopPath);
+                item->iconName = desktopInfo.value("Icon");
+                item->visibleName = desktopInfo.value("Name");
+                item->exec = desktopInfo.value("Exec");
+                item->desktopPath = desktopPath;
+            }
+
+            m_appItems << item;
+            endInsertRows();
+
+            emit itemAdded();
+            emit countChanged();
+        }
     }
 }
 
@@ -549,8 +606,10 @@ void ApplicationModel::onActiveChanged(quint64 wid)
     // beginResetModel();
 
     for (ApplicationItem *item : m_appItems) {
-        if (item->isActive != item->wids.contains(wid)) {
-            item->isActive = item->wids.contains(wid);
+        bool shouldBeActive = (wid != 0) && item->wids.contains(wid);
+
+        if (item->isActive != shouldBeActive) {
+            item->isActive = shouldBeActive;
 
             QModelIndex idx = index(indexOf(item->id), 0, QModelIndex());
             if (idx.isValid()) {

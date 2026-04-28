@@ -45,17 +45,10 @@ XWindowInterface *XWindowInterface::instance()
 XWindowInterface::XWindowInterface(QObject *parent)
     : QObject(parent)
 {
-    // KDE6 中使用新的连接语法
-    // 检查信号是否存在，如果不存在则使用旧的语法
-    if (KWindowSystem::self()->metaObject()->indexOfSignal("windowAdded(WId)") != -1) {
-        connect(KWindowSystem::self(), SIGNAL(windowAdded(WId)), this, SLOT(handleWindowAdded(WId)));
-    }
-    if (KWindowSystem::self()->metaObject()->indexOfSignal("windowRemoved(WId)") != -1) {
-        connect(KWindowSystem::self(), SIGNAL(windowRemoved(WId)), this, SLOT(handleWindowRemoved(WId)));
-    }
-    if (KWindowSystem::self()->metaObject()->indexOfSignal("activeWindowChanged(WId)") != -1) {
-        connect(KWindowSystem::self(), SIGNAL(activeWindowChanged(WId)), this, SLOT(handleActiveWindowChanged(WId)));
-    }
+    // KF6: windowAdded/windowRemoved/activeWindowChanged 信号在 KX11Extras 上，不在 KWindowSystem 上
+    connect(KX11Extras::self(), &KX11Extras::windowAdded, this, &XWindowInterface::handleWindowAdded);
+    connect(KX11Extras::self(), &KX11Extras::windowRemoved, this, &XWindowInterface::handleWindowRemoved);
+    connect(KX11Extras::self(), &KX11Extras::activeWindowChanged, this, &XWindowInterface::handleActiveWindowChanged);
 }
 
 void XWindowInterface::enableBlurBehind(QWindow *view, bool enable, const QRegion &region)
@@ -108,10 +101,11 @@ QMap<QString, QVariant> XWindowInterface::requestInfo(quint64 wid)
     QMap<QString, QVariant> result;
     const QString winClass = QString(winfo.windowClassClass());
 
+    // Use lowercase id for consistent matching
     result.insert("iconName", winClass.toLower());
     result.insert("active", wid == KX11Extras::activeWindow());
     result.insert("visibleName", winfo.visibleName());
-    result.insert("id", winClass);
+    result.insert("id", winClass.toLower());
 
     return result;
 }
