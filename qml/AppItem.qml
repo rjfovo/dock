@@ -101,6 +101,7 @@ DockItem {
         FishUI.MenuItem {
             text: qsTr("Open")
             icon.source: "qrc:/images/open.svg"
+            icon.color: FishUI.Theme.textColor
             visible: windowCount === 0
             onTriggered: appModel.openNewInstance(model.appId)
         }
@@ -115,6 +116,7 @@ DockItem {
         FishUI.MenuItem {
             text: model.isPinned ? qsTr("Unpin") : qsTr("Pin")
             icon.source: model.isPinned ? "qrc:/images/unpin.svg" : "qrc:/images/pin.svg"
+            icon.color: FishUI.Theme.textColor
             visible: model.desktopFile !== ""
             onTriggered: {
                 model.isPinned ? appModel.unPin(model.appId) : appModel.pin(model.appId)
@@ -126,6 +128,7 @@ DockItem {
             text: windowCount === 1 ? qsTr("Close window")
                                     : qsTr("Close %1 windows").arg(windowCount)
             icon.source: "qrc:/images/close.svg"
+            icon.color: FishUI.Theme.textColor
             onTriggered: appModel.closeAllByAppId(model.appId)
         }
     }

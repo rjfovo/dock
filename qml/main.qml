@@ -171,6 +171,7 @@ Item {
                 FishUI.MenuItem {
                     text: qsTr("Open")
                     icon.source: "qrc:/images/open.svg"
+                    icon.color: FishUI.Theme.textColor
                     onTriggered: trash.openTrash()
                 }
 
