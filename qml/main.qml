@@ -134,7 +134,11 @@ Item {
             enableActivateDot: false
             iconName: trash.count === 0 ? "user-trash-empty" : "user-trash-full"
             onClicked: trash.openTrash()
-            onRightClicked: trashMenu.popup()
+            onRightClicked: {
+                var sz = trashMenu.contentSize()
+                var pos = contextMenuPosition(sz.width, sz.height)
+                trashMenu.popupAt(pos.x, pos.y)
+            }
 
             dropArea.enabled: true
 
@@ -164,15 +168,17 @@ Item {
             FishUI.DesktopMenu {
                 id: trashMenu
 
-                MenuItem {
+                FishUI.MenuItem {
                     text: qsTr("Open")
+                    icon.source: "image://icontheme/document-open"
                     onTriggered: trash.openTrash()
                 }
 
-                MenuItem {
+                FishUI.MenuItem {
                     text: qsTr("Empty Trash")
-                    onTriggered: trash.emptyTrash()
+                    icon.source: "image://icontheme/user-trash"
                     visible: trash.count !== 0
+                    onTriggered: trash.emptyTrash()
                 }
             }
         }

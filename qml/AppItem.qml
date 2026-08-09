@@ -52,7 +52,14 @@ DockItem {
 
     onPositionChanged: updateGeometry()
     onPressed: updateGeometry()
-    onRightClicked: if (model.appId !== "cutefish-launcher") contextMenu.show()
+    onRightClicked: {
+        if (model.appId === "cutefish-launcher")
+            return
+
+        var sz = contextMenu.contentSize()
+        var pos = contextMenuPosition(sz.width, sz.height)
+        contextMenu.popupAt(pos.x, pos.y)
+    }
 
     onClicked: (mouse) => {
         if (mouse.button === Qt.LeftButton)
@@ -91,30 +98,34 @@ DockItem {
     FishUI.DesktopMenu {
         id: contextMenu
 
-        MenuItem {
+        FishUI.MenuItem {
             text: qsTr("Open")
+            icon.source: "image://icontheme/document-open"
             visible: windowCount === 0
             onTriggered: appModel.openNewInstance(model.appId)
         }
 
-        MenuItem {
+        FishUI.MenuItem {
             text: model.visibleName
+            icon.source: model.iconName ? "image://icontheme/" + model.iconName : ""
             visible: windowCount > 0 && model.visibleName
             onTriggered: appModel.openNewInstance(model.appId)
         }
 
-        MenuItem {
+        FishUI.MenuItem {
             text: model.isPinned ? qsTr("Unpin") : qsTr("Pin")
+            icon.source: "image://icontheme/pin"
             visible: model.desktopFile !== ""
             onTriggered: {
                 model.isPinned ? appModel.unPin(model.appId) : appModel.pin(model.appId)
             }
         }
 
-        MenuItem {
+        FishUI.MenuItem {
             visible: windowCount !== 0
             text: windowCount === 1 ? qsTr("Close window")
                                     : qsTr("Close %1 windows").arg(windowCount)
+            icon.source: "image://icontheme/window-close"
             onTriggered: appModel.closeAllByAppId(model.appId)
         }
     }

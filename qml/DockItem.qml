@@ -197,4 +197,28 @@ Item {
             }
         }
     }
+
+    // 计算右键菜单的弹出位置：菜单贴紧 dock 边缘弹出，不遮挡 dock 上其它图标。
+    //   - 底部 dock：菜单下边缘贴紧 dock 上边缘，水平居中对齐当前图标
+    //   - 左侧 dock：菜单左边缘贴紧 dock 右边缘，垂直居中对齐当前图标
+    //   - 右侧 dock：菜单右边缘贴紧 dock 左边缘，垂直居中对齐当前图标
+    function contextMenuPosition(menuWidth, menuHeight) {
+        var iconPos = control.mapToGlobal(0, 0)
+        var dockGeo = mainWindow.primaryGeometry
+        var x = 0
+        var y = 0
+
+        if (isBottom) {
+            x = iconPos.x + control.width / 2 - menuWidth / 2
+            y = dockGeo.y - menuHeight
+        } else if (isLeft) {
+            x = dockGeo.x + dockGeo.width
+            y = iconPos.y + control.height / 2 - menuHeight / 2
+        } else { // right
+            x = dockGeo.x - menuWidth
+            y = iconPos.y + control.height / 2 - menuHeight / 2
+        }
+
+        return Qt.point(x, y)
+    }
 }

@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Qt6
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets DBus Quick)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets DBus Quick QuickControls2)
 find_package(Qt6 COMPONENTS LinguistTools REQUIRED)
 
 # KF6 - 使用具体的组件包而不是通用的 KF6 包
@@ -56,6 +56,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Gui
     Qt6::Widgets
     Qt6::Quick
+    Qt6::QuickControls2
     Qt6::DBus
     KF6::CoreAddons
     KF6::WindowSystem

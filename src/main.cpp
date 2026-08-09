@@ -20,6 +20,7 @@
 #include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QQuickView>
+#include <QQuickStyle>
 #include <QTranslator>
 #include <QLocale>
 #include <QDBusConnection>
@@ -34,6 +35,11 @@
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+
+    // 显式指定 Qt Quick Controls 主题为 fish-style：
+    // 会话设置了 QT_STYLE_OVERRIDE=cutefish，QQuickStyle 解析时优先用它（而不是
+    // QT_QUICK_CONTROLS_STYLE），导致回退到 Basic 的"默认 demo 样式"。
+    QQuickStyle::setStyle(QStringLiteral("fish-style"));
 
     // 设置图标主题
     // 在Qt6中，需要确保图标主题可用
