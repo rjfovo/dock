@@ -6,5 +6,9 @@
         <file>images/launchpad.svg</file>
         <file>images/rocket.svg</file>
         <file>images/launcher.svg</file>
+        <file>images/open.svg</file>
+        <file>images/pin.svg</file>
+        <file>images/unpin.svg</file>
+        <file>images/close.svg</file>
     </qresource>
 </RCC>

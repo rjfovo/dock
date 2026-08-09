@@ -100,7 +100,7 @@ DockItem {
 
         FishUI.MenuItem {
             text: qsTr("Open")
-            icon.source: "image://icontheme/document-open"
+            icon.source: "qrc:/images/open.svg"
             visible: windowCount === 0
             onTriggered: appModel.openNewInstance(model.appId)
         }
@@ -114,7 +114,7 @@ DockItem {
 
         FishUI.MenuItem {
             text: model.isPinned ? qsTr("Unpin") : qsTr("Pin")
-            icon.source: "image://icontheme/pin"
+            icon.source: model.isPinned ? "qrc:/images/unpin.svg" : "qrc:/images/pin.svg"
             visible: model.desktopFile !== ""
             onTriggered: {
                 model.isPinned ? appModel.unPin(model.appId) : appModel.pin(model.appId)
@@ -125,7 +125,7 @@ DockItem {
             visible: windowCount !== 0
             text: windowCount === 1 ? qsTr("Close window")
                                     : qsTr("Close %1 windows").arg(windowCount)
-            icon.source: "image://icontheme/window-close"
+            icon.source: "qrc:/images/close.svg"
             onTriggered: appModel.closeAllByAppId(model.appId)
         }
     }

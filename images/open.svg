@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+  <!-- 打开（Open）：粗线条文件夹 -->
+  <path d="M1.9 4.6c0-.6.49-1.1 1.1-1.1h2.7c.29 0 .57.12.78.32l.75.78h6.68c.6 0 1.09.49 1.09 1.1v5.6c0 .6-.49 1.1-1.09 1.1H3c-.61 0-1.1-.5-1.1-1.1V4.6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+  <path d="M2.3 7.2h11.4" stroke="currentColor" stroke-width="0.5" opacity="0.35" stroke-linecap="round"/>
+</svg>
