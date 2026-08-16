@@ -4,27 +4,22 @@
 <context>
     <name>AppItem</name>
     <message>
-        <location filename="../qml/AppItem.qml" line="73"/>
         <source>Open</source>
         <translation>Atvērt</translation>
     </message>
     <message>
-        <location filename="../qml/AppItem.qml" line="85"/>
         <source>Unpin</source>
         <translation>Atspraust</translation>
     </message>
     <message>
-        <location filename="../qml/AppItem.qml" line="85"/>
         <source>Pin</source>
         <translation>Piespraust</translation>
     </message>
     <message>
-        <location filename="../qml/AppItem.qml" line="94"/>
         <source>Close window</source>
         <translation>Aizvērt logu</translation>
     </message>
     <message>
-        <location filename="../qml/AppItem.qml" line="95"/>
         <source>Close %1 windows</source>
         <translation>Aizvērt %1 logus</translation>
     </message>
@@ -32,7 +27,6 @@
 <context>
     <name>ApplicationModel</name>
     <message>
-        <location filename="../src/applicationmodel.cpp" line="285"/>
         <source>Launcher</source>
         <translation>Launčers</translation>
     </message>
@@ -40,17 +34,14 @@
 <context>
     <name>main</name>
     <message>
-        <location filename="../qml/main.qml" line="114"/>
         <source>Trash</source>
         <translation>Atkritne</translation>
     </message>
     <message>
-        <location filename="../qml/main.qml" line="124"/>
         <source>Open</source>
         <translation>Atvērt</translation>
     </message>
     <message>
-        <location filename="../qml/main.qml" line="129"/>
         <source>Empty Trash</source>
         <translation>Iztukšot Atkritni</translation>
     </message>
